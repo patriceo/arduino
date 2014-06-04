@@ -23,8 +23,8 @@ short CHART_MAX_TEMP = 40;
 short CHART_MIN_TEMP = 10;
 
 // Chart pressure initial Range / 10: [900mbar..1090mbar]
-short CHART_MAX_PRESS = 109;
-short CHART_MIN_PRESS = 90;
+float CHART_MAX_PRESS = 109;
+float CHART_MIN_PRESS = 90;
 
 // Store current recorded temperatures & pressure
 // The whole arrays represent CHART_UPDATE_INTERVAL * CHART_WIDTH
@@ -51,7 +51,7 @@ float previousP = -100.0;
 // TFT screen
 TFT myScreen = TFT(CS, DC, RESET);
 
-short counter = 0;
+short counter = -1;
 const short CHART_UPDATE_INTERVAL = 5; // min
 
 void setup() {
@@ -73,15 +73,15 @@ void loop() {
   // First need to call temp, then pressure...
   // Read and calculate temperature (T) 
   int32_t b5 = temperature();                       
-  P = PRESSURE_ALT_COMP_FACTOR * pressure(b5); 
+  P = pressure(b5) / PRESSURE_ALT_COMP_FACTOR; 
 
   // Draw values on top of the screen
-  drawFloat(previousT, T, 80,0, 0,255,255);
-  drawFloat(previousP, P, 70,15, 255,255,0);
+  drawFloat(previousT, T, 80,0, 0,255,255, true);
+  drawFloat(previousP, P, 70,15, 255,255,0, true);
 
   previousP = P;
   previousT = T;
-  if(counter >= CHART_UPDATE_INTERVAL * 60){ // Redraw chart every 60s * CHART_UPDATE_INTERVAL
+  if(true || counter == -1 || counter >= CHART_UPDATE_INTERVAL * 60){ // Redraw chart every 60s * CHART_UPDATE_INTERVAL
     updateGraph();
     counter = 0;
   } else {
@@ -109,34 +109,38 @@ void initScreen() {
   // Draw chart rectangle
   myScreen.noFill();
   myScreen.stroke(255,255,255);
-  myScreen.rect(CHART_X_OFFSET-1, CHART_Y_OFFSET + myScreen.height() - CHART_HEIGHT-1, CHART_WIDTH + 1,  CHART_HEIGHT + 1);
+  myScreen.rect(CHART_X_OFFSET-1, CHART_Y_OFFSET + myScreen.height() - CHART_HEIGHT-1, CHART_WIDTH + 2,  CHART_HEIGHT + 2);
 }
 
 
 /**
 * Draw or update a float value on screen.
 */
-void drawFloat(float previous, float current, int x, int y, int red, int green, int blue) {
-  char charBuffer[8]; 
-    
-  if(previous!=-100) {
+void drawFloat(float previous, float current, int x, int y, int red, int green, int blue, boolean isFloat) {
+  if(previous!=current) {
     // First blank  
-    myScreen.stroke(0,0,0); 
-    dtostrf(previous, 6, 2, charBuffer);
-    myScreen.text(charBuffer, x, y);
+    if(previous!=-100)
+      drawFloat(previous, x, y, 0,0,0, isFloat);
+    drawFloat(current, x,y, red, green, blue, isFloat);
   }
-    myScreen.stroke(red, green, blue);
-    dtostrf(current, 6, 2, charBuffer);
-    myScreen.text(charBuffer, x, y);
-  
+}
+
+void drawFloat(float value, int x, int y, int r, int g, int b, boolean isFloat) {
+    char charBuffer[8];  
+    myScreen.stroke(r,g,b); 
+    if(isFloat) 
+      dtostrf(value, 6, 2, charBuffer);
+    else 
+      itoa(value,  charBuffer, 10);
+    myScreen.text(charBuffer, x, y); 
 }
 
 /**
 * Draw axis ticks (min & max value only)
 */ 
-void drawTicks(float minValue, float maxValue, float previousMin, float previousMax, int x, int red, int green, int blue) {
-  drawFloat(previousMin, minValue, x, myScreen.height()+CHART_Y_OFFSET+5, red,green,blue);
-  drawFloat(previousMax, maxValue, x, myScreen.height()-CHART_HEIGHT+CHART_Y_OFFSET - 10, red,green,blue);
+void drawTicks(int minValue, int maxValue, int previousMin, int previousMax, int x, int red, int green, int blue) {
+  drawFloat(previousMin, minValue, x, myScreen.height()+CHART_Y_OFFSET+5, red,green,blue, false);
+  drawFloat(previousMax, maxValue, x, myScreen.height()-CHART_HEIGHT+CHART_Y_OFFSET - 10, red,green,blue, false);
 }
 
 /**
@@ -156,18 +160,18 @@ void computeChartAutoRange() {
      maxPress = max(pressures[i], maxPress);
  }
    // Display [Min - x , Max + x2] range
-   minTemp -=1.0; // temp curve centered in chart
-   maxTemp += 1.0;
-   minPress -= 5; // Pressure curve
-   maxPress += 6; // not centered to avoir overlaps
+   minTemp--; // temp curve centered in chart
+   maxTemp++;
+   minPress -= 2; // Pressure curve
+   maxPress += 4; // not centered to avoir overlaps
    
-   drawTicks(minTemp, maxTemp, CHART_MIN_TEMP, CHART_MAX_TEMP, CHART_WIDTH+CHART_X_OFFSET-10, 0,255,255);
-   drawTicks(minPress, maxPress, CHART_MIN_PRESS*10, CHART_MAX_PRESS*10, 0, 255,255,0);
+   drawTicks((int) minTemp, (int) maxTemp, CHART_MIN_TEMP, CHART_MAX_TEMP, CHART_WIDTH+CHART_X_OFFSET+5, 0,255,255);
+   drawTicks((int) minPress, (int) maxPress, CHART_MIN_PRESS*10, CHART_MAX_PRESS*10, 0, 255,255,0);
    
-   CHART_MIN_TEMP = minTemp;
-   CHART_MAX_TEMP = maxTemp;
-   CHART_MIN_PRESS = minPress / 10;
-   CHART_MAX_PRESS = maxPress / 10;
+   CHART_MIN_TEMP = (int) minTemp;
+   CHART_MAX_TEMP = (int) maxTemp;
+   CHART_MIN_PRESS = minPress;
+   CHART_MAX_PRESS = maxPress;
 }
 
 /**
@@ -177,9 +181,9 @@ void computeChartAutoRange() {
 * Parameters are colors for temperature (t) curve and pressure (p) curve
 */
 void drawCurves(int tRed, int tGreen, int tBlue, int pRed, int pGreen, int pBlue) {
-    int i=CHART_WIDTH-2;
+    int i=CHART_WIDTH-1;
     
-    while (i>1 && temperatures[i-1]!=-100) {
+    while (i>0 && temperatures[i-1]!=-100) {
       // First temperature curve
       myScreen.stroke(tRed, tGreen, tBlue);
       myScreen.line(i+CHART_X_OFFSET, getChartYPosition(temperatures[i],CHART_MIN_TEMP, CHART_MAX_TEMP),
