@@ -14,23 +14,29 @@
 #define CHART_WIDTH 120
 #define CHART_HEIGHT 70
 
-// Chart Offset
+// Chart position sffsets
 #define CHART_X_OFFSET 20
 #define CHART_Y_OFFSET -15
 
-// Chart temperature initial Range
-float CHART_MAX_TEMP = 40;
-float CHART_MIN_TEMP = 10;
+// Chart temperature initial Range [10°C..40°C]
+short CHART_MAX_TEMP = 40;
+short CHART_MIN_TEMP = 10;
 
-// Chart pressure initial Range
-float CHART_MAX_PRESS = 1100;
-float CHART_MIN_PRESS = 900;
+// Chart pressure initial Range / 10: [900mbar..1090mbar]
+short CHART_MAX_PRESS = 109;
+short CHART_MIN_PRESS = 90;
 
-// Store current week and temperatures
-// The whole arrays represent CHART_UPDATE_INTERVAL * CHART_WIDTH seconds
+// Store current recorded temperatures & pressure
+// The whole arrays represent CHART_UPDATE_INTERVAL * CHART_WIDTH
 // So 5min * 120 = 10 hours on default settings
 float temperatures[CHART_WIDTH];
 float pressures[CHART_WIDTH];
+
+// Pressure needs to be compensed depending on altitude where the sensor is located
+// See http://en.wikipedia.org/wiki/Barometric_formula
+// 0.987507f is a roughly evaluated compensasion factor for altitude = 88m
+// evaluated thanks to http://www.calctool.org/CALC/phys/default/pres_at_alt
+const float PRESSURE_ALT_COMP_FACTOR  = 0.987507f;
 
 int16_t  ac1, ac2, ac3, b1, b2, mb, mc, md; // Store sensor PROM values from BMP180
 uint16_t ac4, ac5, ac6;                     // Store sensor PROM values from BMP180
@@ -45,12 +51,8 @@ float previousP = -100.0;
 // TFT screen
 TFT myScreen = TFT(CS, DC, RESET);
 
-// log chart data every 300s
-int counter = 0;
-const int CHART_UPDATE_INTERVAL = 300;
-
-// char array buffer
-char printout[8];
+short counter = 0;
+const short CHART_UPDATE_INTERVAL = 5; // min
 
 void setup() {
   Wire.begin();                             // Activate I2C
@@ -59,15 +61,19 @@ void setup() {
   init_SENSOR();                            // Initialize baro sensor variables
   delay(100);
   
-  // Static text
-  initScreen(); 
+   // init tabs at -100 values
+  for(int i=0;i<CHART_WIDTH;i++){
+     temperatures[i] = -100.0;
+     pressures[i]= -100.0;
+  } 
+  initScreen();   
 }
 
 void loop() {
   // First need to call temp, then pressure...
   // Read and calculate temperature (T) 
   int32_t b5 = temperature();                       
-  P = pressure(b5); 
+  P = PRESSURE_ALT_COMP_FACTOR * pressure(b5); 
 
   // Draw values on top of the screen
   drawFloat(previousT, T, 80,0, 0,255,255);
@@ -75,7 +81,7 @@ void loop() {
 
   previousP = P;
   previousT = T;
-  if(counter >= CHART_UPDATE_INTERVAL){ // Redraw chart every 60s 
+  if(counter >= CHART_UPDATE_INTERVAL * 60){ // Redraw chart every 60s * CHART_UPDATE_INTERVAL
     updateGraph();
     counter = 0;
   } else {
@@ -99,38 +105,30 @@ void initScreen() {
   myScreen.text("C", 120,0); 
   myScreen.stroke(255,255,0);
   myScreen.text("mbar", 120,15);
-  
-   // init tabs at -100 values
-  for(int i=0;i<CHART_WIDTH;i++){
-     temperatures[i] = -100.0;
-     pressures[i]= -100.0;
-  } 
-  computeChartAutoRange();  
-  drawAxis();
-}
 
-/**
-* Draw the chart Rectangle axis
-*/
-void drawAxis() { 
+  // Draw chart rectangle
   myScreen.noFill();
   myScreen.stroke(255,255,255);
   myScreen.rect(CHART_X_OFFSET-1, CHART_Y_OFFSET + myScreen.height() - CHART_HEIGHT-1, CHART_WIDTH + 1,  CHART_HEIGHT + 1);
 }
 
+
 /**
 * Draw or update a float value on screen.
 */
 void drawFloat(float previous, float current, int x, int y, int red, int green, int blue) {
-  if(previous!=current && previous!=-100) {
+  char charBuffer[8]; 
+    
+  if(previous!=-100) {
     // First blank  
     myScreen.stroke(0,0,0); 
-    dtostrf(previous, 6, 2, printout);
-    myScreen.text(printout, x, y);
-    myScreen.stroke(red, green, blue);
-    dtostrf(current, 6, 2, printout);
-    myScreen.text(printout, x, y);
+    dtostrf(previous, 6, 2, charBuffer);
+    myScreen.text(charBuffer, x, y);
   }
+    myScreen.stroke(red, green, blue);
+    dtostrf(current, 6, 2, charBuffer);
+    myScreen.text(charBuffer, x, y);
+  
 }
 
 /**
@@ -142,8 +140,8 @@ void drawTicks(float minValue, float maxValue, float previousMin, float previous
 }
 
 /**
-* Compute the most relevant MIN_CHART_TEMP / MAX_CHART_TEMP
-* According to serie values
+* Compute according to serie values the most relevant chart ranges [CHART_MIN_TEMP..CHART_MAX_TEMP]
+* and [CHART_MIN_PRESS..CHART_MAX_PRESS]
 */
 void computeChartAutoRange() {
  float minTemp = 100;
@@ -164,12 +162,12 @@ void computeChartAutoRange() {
    maxPress += 6; // not centered to avoir overlaps
    
    drawTicks(minTemp, maxTemp, CHART_MIN_TEMP, CHART_MAX_TEMP, CHART_WIDTH+CHART_X_OFFSET-10, 0,255,255);
-   drawTicks(minPress, maxPress, CHART_MIN_PRESS, CHART_MAX_PRESS, 0, 255,255,0);
+   drawTicks(minPress, maxPress, CHART_MIN_PRESS*10, CHART_MAX_PRESS*10, 0, 255,255,0);
    
    CHART_MIN_TEMP = minTemp;
    CHART_MAX_TEMP = maxTemp;
-   CHART_MIN_PRESS = minPress;
-   CHART_MAX_PRESS = maxPress;
+   CHART_MIN_PRESS = minPress / 10;
+   CHART_MAX_PRESS = maxPress / 10;
 }
 
 /**
@@ -180,25 +178,18 @@ void computeChartAutoRange() {
 */
 void drawCurves(int tRed, int tGreen, int tBlue, int pRed, int pGreen, int pBlue) {
     int i=CHART_WIDTH-2;
-    int x1,y1,x2,y2;
     
     while (i>1 && temperatures[i-1]!=-100) {
       // First temperature curve
-      drawPoints(i+CHART_X_OFFSET, getChartYPosition(temperatures[i],CHART_MIN_TEMP, CHART_MAX_TEMP),
-                  i+CHART_X_OFFSET - 1, getChartYPosition(temperatures[i-1], CHART_MIN_TEMP, CHART_MAX_TEMP), tRed, tGreen, tBlue);
+      myScreen.stroke(tRed, tGreen, tBlue);
+      myScreen.line(i+CHART_X_OFFSET, getChartYPosition(temperatures[i],CHART_MIN_TEMP, CHART_MAX_TEMP),
+                  i+CHART_X_OFFSET - 1, getChartYPosition(temperatures[i-1], CHART_MIN_TEMP, CHART_MAX_TEMP));
       // Then pressure curve
-      drawPoints(i+CHART_X_OFFSET,getChartYPosition(pressures[i], CHART_MIN_PRESS, CHART_MAX_PRESS),
-          i+CHART_X_OFFSET - 1, getChartYPosition(pressures[i-1], CHART_MIN_PRESS, CHART_MAX_PRESS), pRed, pGreen, pBlue);
+      myScreen.stroke(pRed, pGreen, pBlue);
+      myScreen.line(i+CHART_X_OFFSET,getChartYPosition(pressures[i], CHART_MIN_PRESS, CHART_MAX_PRESS),
+          i+CHART_X_OFFSET - 1, getChartYPosition(pressures[i-1], CHART_MIN_PRESS, CHART_MAX_PRESS));
       i--;
   }
-}
-
-/**
-* Draw a line between 2 points with given color
-*/
-void drawPoints(int x1, int y1, int x2, int y2, int red, int green, int blue) {
-  myScreen.stroke(red,green,blue);
-  myScreen.line(x1, y1, x2, y2);
 }
 
 /**
@@ -233,7 +224,6 @@ int getChartYPosition(float value, int minRange, int maxRange) {
 }
 
 
-
 /*********************************************************
   Bosch Pressure Sensor BMP085 / BMP180 readout routine
   for the Arduino platform.
@@ -245,8 +235,7 @@ int getChartYPosition(float value, int minRange, int maxRange) {
 /**********************************************
   Initialize sensor variables
  **********************************************/
-void init_SENSOR()
-{
+void init_SENSOR() {
   ac1 = read_2_bytes(0xAA);
   ac2 = read_2_bytes(0xAC);
   ac3 = read_2_bytes(0xAE);
@@ -278,8 +267,7 @@ void init_SENSOR()
 /**********************************************
   Calcualte pressure readings
  **********************************************/
-float pressure(int32_t b5)
-{
+float pressure(int32_t b5) {
   int32_t x1, x2, x3, b3, b6, p, UP;
   uint32_t b4, b7; 
 
@@ -305,8 +293,7 @@ float pressure(int32_t b5)
 /**********************************************
   Read uncompensated temperature
  **********************************************/
-int32_t temperature()
-{
+int32_t temperature() {
   int32_t x1, x2, b5, UT;
 
   Wire.beginTransmission(ADDRESS_SENSOR); // Start transmission to device 
@@ -314,7 +301,7 @@ int32_t temperature()
   Wire.write(0x2e);                       // Write data
   Wire.endTransmission();                 // End transmission
   delay(5);                               // Datasheet suggests 4.5 ms
-  
+ 
   UT = read_2_bytes(0xf6);                // Read uncompensated TEMPERATURE value
 
   // Calculate true temperature
@@ -329,8 +316,7 @@ int32_t temperature()
 /**********************************************
   Read uncompensated pressure value
  **********************************************/
-int32_t read_pressure()
-{
+int32_t read_pressure() {
   int32_t value; 
   Wire.beginTransmission(ADDRESS_SENSOR);   // Start transmission to device 
   Wire.write(0xf4);                         // Sends register address to read from
@@ -351,7 +337,7 @@ int32_t read_pressure()
 /**********************************************
   Read 1 byte from the BMP sensor
  **********************************************/
-uint8_t read_1_byte(uint8_t code)
+/*uint8_t read_1_byte(uint8_t code)
 {
   uint8_t value;
   Wire.beginTransmission(ADDRESS_SENSOR);         // Start transmission to device 
@@ -363,13 +349,12 @@ uint8_t read_1_byte(uint8_t code)
     value = Wire.read();                          // Get 1 byte of data
   }
   return value;                                   // Return value
-}
+}*/
 
 /**********************************************
   Read 2 bytes from the BMP sensor
  **********************************************/
-uint16_t read_2_bytes(uint8_t code)
-{
+uint16_t read_2_bytes(uint8_t code) {
   uint16_t value;
   Wire.beginTransmission(ADDRESS_SENSOR);         // Start transmission to device 
   Wire.write(code);                               // Sends register address to read from
