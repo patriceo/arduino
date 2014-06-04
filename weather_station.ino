@@ -1,7 +1,6 @@
 #include <TFT.h>
 #include <SPI.h>
 #include <Wire.h>
-#include <Bridge.h>
 
 // pin definition for the Leonardo or Yun boards
 #define CS   7
@@ -46,10 +45,9 @@ float previousP = -100.0;
 // TFT screen
 TFT myScreen = TFT(CS, DC, RESET);
 
-
-// log chart data every 60s
+// log chart data every 300s
 int counter = 0;
-const int CHART_UPDATE_INTERVAL = 60;
+const int CHART_UPDATE_INTERVAL = 300;
 
 // char array buffer
 char printout[8];
