@@ -81,7 +81,7 @@ void loop() {
 
   previousP = P;
   previousT = T;
-  if(true || counter == -1 || counter >= CHART_UPDATE_INTERVAL * 60){ // Redraw chart every 60s * CHART_UPDATE_INTERVAL
+  if(counter == -1 || counter >= CHART_UPDATE_INTERVAL * 60){ // Redraw chart every 60s * CHART_UPDATE_INTERVAL
     updateGraph();
     counter = 0;
   } else {
@@ -148,8 +148,8 @@ void drawTicks(int minValue, int maxValue, int previousMin, int previousMax, int
 * and [CHART_MIN_PRESS..CHART_MAX_PRESS]
 */
 void computeChartAutoRange() {
- float minTemp = 100;
- float maxTemp = -50;
+ int minTemp = 100;
+ int maxTemp = -50;
  float maxPress = 0;
  float minPress = 2000;
   
@@ -165,11 +165,11 @@ void computeChartAutoRange() {
    minPress -= 2; // Pressure curve
    maxPress += 4; // not centered to avoir overlaps
    
-   drawTicks((int) minTemp, (int) maxTemp, CHART_MIN_TEMP, CHART_MAX_TEMP, CHART_WIDTH+CHART_X_OFFSET+5, 0,255,255);
-   drawTicks((int) minPress, (int) maxPress, CHART_MIN_PRESS*10, CHART_MAX_PRESS*10, 0, 255,255,0);
+   drawTicks(minTemp, maxTemp, CHART_MIN_TEMP, CHART_MAX_TEMP, CHART_WIDTH+CHART_X_OFFSET+5, 0,255,255);
+   drawTicks(minPress, maxPress, CHART_MIN_PRESS, CHART_MAX_PRESS, 0, 255,255,0);
    
-   CHART_MIN_TEMP = (int) minTemp;
-   CHART_MAX_TEMP = (int) maxTemp;
+   CHART_MIN_TEMP = minTemp;
+   CHART_MAX_TEMP = maxTemp;
    CHART_MIN_PRESS = minPress;
    CHART_MAX_PRESS = maxPress;
 }
