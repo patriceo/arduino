@@ -1,6 +1,7 @@
 #include <TFT.h>
 #include <SPI.h>
 #include <Wire.h>
+#include <Process.h>
 
 // pin definition for the Leonardo or Yun boards
 #define CS   7
