@@ -1,0 +1,21 @@
+A very simple sketch to control a relay over a REST API with
+- An arduino Yun configured on local network (WIFI/LAN)
+- A Relay wired on DIGITAL 6
+
+
+API provides following methods (GET/POST):
+
+http://arduino.local:5555/arduino/status/ -> display current program status (Enable/Disable)
+http://arduino.local:5555/arduino/enable-door/ -> set current status to 'Enable'
+http://arduino.local:5555/arduino/disable-door/ -> set current status to 'Disabled', door command will have no effect
+http://arduino.local:5555/arduino/door/ -> If current status is 'Enabled', turns the relay on for 2s then off again. 
+
+REST Authentication should be configured through Arduino Yun Web Panel (http://arduino.local)
+
+
+Required Wiring schema (Arduino Yun <-> Relay module)
+- GND <-> GND
+- 5V <-> VCC
+- DIGITAL6 <-> CH1 (or any relay module signal chanel)
+
+That's all !
