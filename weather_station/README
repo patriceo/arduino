@@ -1,4 +1,4 @@
-weather_station.ino : a very simple weither station code to display temperature (in °C) and pressure (in mbar) using Leonardo or Yun Arduino platform + BMP180 Sensor + Arduino TFT Screen
+A very simple weither station code to display temperature (in °C) and pressure (in mbar) using Leonardo or Yun Arduino platform + BMP180 Sensor + Arduino TFT Screen
 
 http://arduino.cc/en/Main/ArduinoBoardYun
 
