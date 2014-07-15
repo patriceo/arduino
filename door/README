@@ -18,4 +18,11 @@ Required Wiring schema (Arduino Yun <-> Relay module)
 - 5V <-> VCC
 - DIGITAL6 <-> CH1 (or any relay module signal chanel)
 
-That's all !
+
+Command line Usage:
+
+Without authentication
+curl http://arduino.local:5555/arduino/door/
+
+With authentication configured in Arduino Yun Panel :
+curl -u arduino_username:arduino_password http://arduino.local:5555/arduino/door/
