@@ -5,8 +5,8 @@ A very simple sketch to control a relay over a REST API with
 
 API provides following methods (GET/POST):
 
-http://arduino.local:5555/arduino/status/ -> display current program status (Enable/Disable)
-http://arduino.local:5555/arduino/enable-door/ -> set current status to 'Enable'
+http://arduino.local:5555/arduino/status/ -> display current program status (Enabled/Disabled)
+http://arduino.local:5555/arduino/enable-door/ -> set current status to 'Enabled'
 http://arduino.local:5555/arduino/disable-door/ -> set current status to 'Disabled', door command will have no effect
 http://arduino.local:5555/arduino/door/ -> If current status is 'Enabled', turns the relay on for 2s then off again. 
 
