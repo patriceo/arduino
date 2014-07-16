@@ -24,7 +24,7 @@ boolean door_enabled = true;
 // Listen on default port 5555, the webserver on the Yun
 // will forward there all the HTTP requests for us.
 YunServer server;
-YunClient client = NULL;
+YunClient client;
 
 void setup() {
   Serial.begin(9600);
@@ -52,7 +52,6 @@ void loop() {
 
     // Close connection and free resources.
     client.stop();
-    client = NULL;
   }
   delay(50); // Poll every 50ms
 }
@@ -96,7 +95,7 @@ void process(YunClient client) {
 * Print method to print on both serial & http client response
 */
 void print(String message) {
-   if(client!=NULL) client.print(message);
+   client.print(message);
    Serial.print(message); 
 }
 
@@ -104,7 +103,7 @@ void print(String message) {
 * Print method to print on both serial & http client response
 */
 void println(String message) {
-   if(client!=NULL) client.println(message);
+   client.println(message);
    Serial.println(message); 
 }
 
