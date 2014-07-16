@@ -29,7 +29,8 @@ YunClient client = NULL;
 void setup() {
   Serial.begin(9600);
   Serial.println("Initializing...");
-  pinMode(RELAY, OUTPUT);                           // Initialise the Arduino data pins for OUTPUT  
+  pinMode(RELAY, OUTPUT);                           // Initialise the Arduino data pins for OUTPUT  (Relay)
+  pinMode(13, OUTPUT);                              // Initialise the Arduino data pins for OUTPUT  (Led)
   digitalWrite(13, LOW);                            // Turns led off
   digitalWrite(RELAY, LOW);                         // Turns relay off
   
@@ -62,7 +63,7 @@ void loop() {
 void process(YunClient client) {
   String method = client.readStringUntil('/');   // GET or POST
   String root = client.readStringUntil('/');     // arduino
-  String command = client.readStringUntil('/');  // door, etc..
+  String command = client.readStringUntil('/');  // door, status, enable-door, disable-door
   
   Serial.print("Processing command: ");
   Serial.println(command);
